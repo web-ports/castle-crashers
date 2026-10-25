@@ -1,7 +1,24 @@
 (() => {
   const KEEP = 40 << 20, SMALL = 256 << 10;
   const urlOf = path => path.slice(1).split('/').map(encodeURIComponent).join('/');
-  const fetchSync = url => fetchAssetSync(url);
+
+  const fetchSync = url => {
+    for (let tries = 0; ; tries++) {
+      try {
+        const xhr = new XMLHttpRequest();
+        xhr.open('GET', url, false);
+        xhr.overrideMimeType('text/plain; charset=x-user-defined');
+        xhr.send(null);
+        if (xhr.status !== 200) throw new Error(url + ': ' + xhr.status);
+        const text = xhr.responseText, bytes = new Uint8Array(text.length);
+        for (let i = 0; i < text.length; i++) bytes[i] = text.charCodeAt(i);
+        return bytes;
+      } catch (e) {
+        if (tries === 2) throw e;
+      }
+    }
+  };
+
   const makeDirs = (FS, dir) => {
     let at = '';
     for (const part of dir.split('/').filter(Boolean)) {
@@ -9,17 +26,30 @@
       try { FS.mkdir(at); } catch {}
     }
   };
+
   self.fetchSmallPack = async (list, onProgress) => {
     let total = 0;
     for (const [offset, size] of Object.values(list.pack)) total = Math.max(total, offset + size);
-    const pack = await fetchAsset('small.pack', onProgress);
-    if (pack.length !== total) throw new Error('small.pack: truncated');
+    const r = await fetch('small.pack');
+    if (!r.ok) throw new Error('small.pack: ' + r.status);
+    const pack = new Uint8Array(total), reader = r.body.getReader();
+    let got = 0;
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      pack.set(value, got);
+      got += value.length;
+      onProgress(got, total);
+    }
+    if (got !== total) throw new Error('small.pack: truncated');
     return pack;
   };
+
   self.mountLazyFiles = (Module, list, pack) => {
     const FS = Module.FS, MEMFS = FS.filesystems.MEMFS, closed = new Map();
     let closedBytes = 0;
     const stats = Module.peLazyStats = { loads: 0, bytes: 0 };
+
     const load = node => {
       if (node.contents) return;
       let bytes;
@@ -64,6 +94,7 @@
       mmap: MEMFS.stream_ops.mmap,
       msync: MEMFS.stream_ops.msync,
     };
+
     for (const [path, [offset, size]] of Object.entries(list.pack)) {
       const cut = path.lastIndexOf('/');
       makeDirs(FS, path.slice(0, cut));
@@ -77,6 +108,15 @@
       node.lazySize = size;
       node.node_ops = nodeOps;
       node.stream_ops = streamOps;
+    }
+  };
+
+  self.prefetchLazyFiles = async list => {
+    if (/^(localhost|127\.|\[::1\])/.test(location.hostname)) return;
+    const rank = p => /\/game\//.test(p) ? 0 : /\/(levels|bsps)\//.test(p) ? 1 : 2;
+    const names = Object.keys(list.lazy).sort((a, b) => rank(a) - rank(b) || list.lazy[a] - list.lazy[b]);
+    for (const path of names) {
+      try { await (await fetch(urlOf(path), { priority: 'low' })).body.pipeTo(new WritableStream()); } catch {}
     }
   };
 })();
