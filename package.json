@@ -1,0 +1,21 @@
+{
+  "name": "castle-crashers-web",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "start": "npm run build && node scripts/serve.mjs",
+    "preview": "node scripts/serve.mjs",
+    "test": "node --test test/*.test.mjs",
+    "test:browser": "playwright test",
+    "runtime:package": "node scripts/package-runtime.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.64.1",
+    "terser": "^5.51.2"
+  }
+}
