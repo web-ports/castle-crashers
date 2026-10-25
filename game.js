@@ -167,10 +167,5 @@ async function start() {
   }
 }
 
-if (location.protocol === 'file:') {
-  showMessage('Unable to load', 'Open the hosted website or run npm start.');
-} else if (!WebAssembly.Suspending || !WebAssembly.promising) {
-  showMessage('Browser unsupported', 'Use a current version of Chrome or Edge with WebAssembly JSPI support.');
-} else {
-  start().catch(error => showMessage('Could not load game', error.message));
-}
+start().catch(error => showMessage('Could not load game', error.message));
+ 
