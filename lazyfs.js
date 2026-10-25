@@ -27,23 +27,43 @@
     }
   };
 
-  self.fetchSmallPack = async (list, onProgress) => {
-    let total = 0;
-    for (const [offset, size] of Object.values(list.pack)) total = Math.max(total, offset + size);
-    const r = await fetch('small.pack');
-    if (!r.ok) throw new Error('small.pack: ' + r.status);
-    const pack = new Uint8Array(total), reader = r.body.getReader();
-    let got = 0;
+
+self.fetchSmallPack = async (list, onProgress) => {
+  let total = 0;
+  for (const [offset, size] of Object.values(list.pack)) {
+    total = Math.max(total, offset + size);
+  }
+
+  const pack = new Uint8Array(total);
+  let got = 0;
+
+  for (const file of ['small.pack.part1', 'small.pack.part2']) {
+    const r = await fetch(file);
+    if (!r.ok) throw new Error(file + ': ' + r.status);
+
+    const reader = r.body.getReader();
+
     for (;;) {
       const { done, value } = await reader.read();
       if (done) break;
+
+      if (got + value.length > total) {
+        throw new Error(file + ': exceeds expected pack size');
+      }
+
       pack.set(value, got);
       got += value.length;
       onProgress(got, total);
     }
-    if (got !== total) throw new Error('small.pack: truncated');
-    return pack;
-  };
+  }
+
+  if (got !== total) {
+    throw new Error('small.pack: truncated');
+  }
+
+  return pack;
+};
+
 
   self.mountLazyFiles = (Module, list, pack) => {
     const FS = Module.FS, MEMFS = FS.filesystems.MEMFS, closed = new Map();
@@ -112,7 +132,6 @@
   };
 
   self.prefetchLazyFiles = async list => {
-    if (/^(localhost|127\.|\[::1\])/.test(location.hostname)) return;
     const rank = p => /\/game\//.test(p) ? 0 : /\/(levels|bsps)\//.test(p) ? 1 : 2;
     const names = Object.keys(list.lazy).sort((a, b) => rank(a) - rank(b) || list.lazy[a] - list.lazy[b]);
     for (const path of names) {
