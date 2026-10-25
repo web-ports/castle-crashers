@@ -7713,6 +7713,7 @@ function jspi_start32(index, stack) {
     });
   }, 0);
 }
+window.jspi_start32 = jspi_start32;
 
 function install_async_state_bridge() {
   Module.peAsyncSave = () => Module._pe_async_save32();

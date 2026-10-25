@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en" data-gamepad="native"><meta charset="utf-8">
-<base href="https://cdn.jsdelivr.net/gh/web-ports/castle-crashers@8b6857da54dbd429c7b9da3bd759617d5643ad49/">
+<base href="https://cdn.jsdelivr.net/gh/web-ports/castle-crashers@0e8c15ced192147948fd871ff75d5b34366501bf/">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <style>
 html,body{margin:0;height:100%;overflow:hidden;background:#000;color:#fff;font:14px system-ui,sans-serif}
@@ -144,7 +144,7 @@ async function start() {
     canvas,
     mainScriptUrlOrBlob: script,
     print: (...a) => { console.log(...a); log(...a); },
-    printErr: (...a) => { console.warn(...a); log(...a); },
+    printErr: (...a) => { console.error(...a); log(...a); },
     setStatus: text => {
       const m = /\((\d+)\/(\d+)\)/.exec(text || '');
       if (m) fill.style.width = (100 * m[1] / m[2]).toFixed(1) + '%';
